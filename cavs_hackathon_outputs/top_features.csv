@@ -1,0 +1,10 @@
+metric,importance
+sales_window_days,0.35
+avg_tix_per_txn,0.25
+txns,0.2
+tier,0.08
+day_of_week,0.05
+giveaway,0.03
+theme,0.02
+special_jersey,0.01
+season,0.01
