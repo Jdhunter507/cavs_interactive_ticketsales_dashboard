@@ -111,12 +111,13 @@ else:
     if day_select != "All":
         segment_df = segment_df[segment_df["day_of_week"] == day_select]
 
-# If not enough data for chosen filters
+# Adaptive fallback: allow smaller samples but flag them
 if len(segment_df) < 50:
-    st.info(f"📊 Showing default pacing benchmarks because there isn't enough historical data for "
-            f"{tier_select} / {theme_select} / {giveaway_select}.")
-    segment_df = cavs.copy()
-
+    st.warning(f"⚠️ Limited data for {tier_select} / {theme_select} / {giveaway_select} "
+               f"({len(segment_df)} records). Using smaller sample for pacing — interpret trends with caution.")
+elif len(segment_df) < 150:
+    st.info(f"ℹ️ Moderate sample size ({len(segment_df)} records) for {tier_select} / {theme_select} / {giveaway_select}. "
+            "Pacing curve may show slight noise.")
 
 # Compute pacing safely
 if "cum_share" not in segment_df.columns or segment_df.empty:
