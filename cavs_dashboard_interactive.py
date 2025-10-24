@@ -195,6 +195,34 @@ col2.metric("📈 Forecast", int(forecast_value))
 col3.metric("⚠️ Gap to Goal", int(gap))
 
 # ===========================
+# SALES GAUGE CHART
+# ===========================
+st.subheader("📟 Ticket Sales Gauge")
+
+fig_gauge = go.Figure(go.Indicator(
+    mode="gauge+number+delta",
+    value=forecast_value,
+    delta={"reference": goal, "increasing": {"color": "green"}, "decreasing": {"color": "red"}},
+    gauge={
+        "axis": {"range": [0, goal * 1.4]},
+        "bar": {"color": "royalblue"},
+        "steps": [
+            {"range": [0, goal * 0.7], "color": "lightcoral"},
+            {"range": [goal * 0.7, goal], "color": "gold"},
+            {"range": [goal, goal * 1.4], "color": "lightgreen"},
+        ],
+        "threshold": {
+            "line": {"color": "black", "width": 4},
+            "thickness": 0.75,
+            "value": forecast_value
+        }
+    },
+    title={"text": "Forecasted Ticket Sales vs Goal"}
+))
+st.plotly_chart(fig_gauge, use_container_width=True)
+
+
+# ===========================
 # PACING STATUS
 # ===========================
 p25_val = np.interp(sales_window, pacing_segment["days_since_onsale"], pacing_segment["p25"])
@@ -232,23 +260,67 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # ===========================
-# INTERVENTION TIMELINE (EXAMPLE)
+# INTERVENTION TIMELINE (ENHANCED)
 # ===========================
-st.subheader("🕓 Example Intervention Timeline")
+st.subheader("🕓 Strategic Intervention Timeline")
+
+# Dynamic context message
+if "Danger" in status:
+    st.error("⚠️ Urgent: Implement interventions immediately to boost pace!")
+elif "On Pace" in status:
+    st.warning("🟡 Moderate pace — plan mid-cycle interventions.")
+else:
+    st.success("🟢 Strong pace — maintain current strategy.")
+
 st.markdown("""
-If a game falls into the **Danger Zone (<P25)**, teams should consider:
-- Triggering **marketing push** or **bundle offers**
-- Adding **Giveaway/Theme activation**
-- Using **dynamic pricing** to stimulate demand  
-Below are sample interventions and their effect windows:
+This timeline shows recommended interventions at key points in the sales cycle.  
+The earlier you act, the stronger the compounding impact on pacing and forecast.
 """)
 
+# Data setup
 interventions = pd.DataFrame({
     "Days Before Game": [90, 60, 30, 7],
-    "Intervention": ["Launch early marketing", "Add Giveaway promotion", "Push urgency campaign", "Offer limited-time discount"],
-    "Expected Effect": ["+10% pace", "+8% pace", "+5% pace", "+3% pace"]
+    "Intervention": [
+        "Launch Early Marketing",
+        "Add Giveaway Promotion",
+        "Push Urgency Campaign",
+        "Offer Limited-Time Discount"
+    ],
+    "Expected Effect (%)": [10, 8, 5, 3],
+    "Phase": ["Awareness", "Momentum", "Urgency", "Last Call"]
 })
-st.dataframe(interventions, hide_index=True)
+
+# Plotly timeline-style scatter
+fig_timeline = px.scatter(
+    interventions,
+    x="Days Before Game",
+    y="Expected Effect (%)",
+    text="Intervention",
+    color="Phase",
+    color_discrete_sequence=["#C8102E", "#FDBB30", "#6BA539", "#4B9CD3"],
+    size="Expected Effect (%)",
+    hover_data={"Intervention": True, "Expected Effect (%)": True, "Days Before Game": True},
+)
+
+fig_timeline.update_traces(
+    marker=dict(line=dict(width=1, color="black")),
+    textposition="top center",
+)
+
+fig_timeline.update_layout(
+    title="📈 Recommended Interventions and Expected Lift",
+    xaxis_title="Days Before Game",
+    yaxis_title="Expected Pacing Lift (%)",
+    xaxis=dict(autorange="reversed"),
+    template="plotly_white",
+    height=450,
+    legend_title_text="Sales Phase"
+)
+
+st.plotly_chart(fig_timeline, use_container_width=True)
+
+st.caption("Each circle represents an intervention opportunity. Earlier phases yield higher potential lift.")
+
 
 # ===========================
 # INSIGHTS
