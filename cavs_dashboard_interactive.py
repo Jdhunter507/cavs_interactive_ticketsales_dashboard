@@ -95,27 +95,47 @@ st.sidebar.caption("Use the filters to segment pacing and forecast behavior.")
 # SEGMENTED PACING CALCULATION
 # ===========================
 segment_df = cavs.copy()
-if tier_select != "All":
-    segment_df = segment_df[segment_df["tier"] == tier_select]
-if giveaway_select != "All":
-    segment_df = segment_df[segment_df["giveaway"] == giveaway_select]
-if theme_select != "All":
-    segment_df = segment_df[segment_df["theme"] == theme_select]
-if day_select != "All":
-    segment_df = segment_df[segment_df["day_of_week"] == day_select]
 
-# If segment empty, fallback
-if len(segment_df) < 100:
-    st.warning("Not enough data for this segmentation. Showing all games instead.")
-    segment_df = cavs
+if segment_df.empty:
+    st.warning("No Cavs ticket data loaded — using default pacing line from historical_pacing_line.csv only.")
+    pacing_segment = pacing.copy()
+    pacing_segment.rename(columns={"median_cum_share": "median"}, inplace=True)
+else:
+    # Apply segmentation filters
+    if tier_select != "All":
+        segment_df = segment_df[segment_df["tier"] == tier_select]
+    if giveaway_select != "All":
+        segment_df = segment_df[segment_df["giveaway"] == giveaway_select]
+    if theme_select != "All":
+        segment_df = segment_df[segment_df["theme"] == theme_select]
+    if day_select != "All":
+        segment_df = segment_df[segment_df["day_of_week"] == day_select]
 
-pacing_segment = (
-    segment_df.groupby("days_since_onsale")["cum_share"]
-    .quantile([0.25, 0.5, 0.75])
-    .unstack()
-    .reset_index()
-    .rename(columns={0.25: "p25", 0.5: "median", 0.75: "p75"})
-)
+    # If not enough data for chosen filters
+    if len(segment_df) < 50:
+        st.warning("Not enough data for this segmentation. Showing all games instead.")
+        segment_df = cavs
+
+    # Compute pacing by quantiles
+    pacing_segment = (
+        segment_df.groupby("days_since_onsale")["cum_share"]
+        .quantile([0.25, 0.5, 0.75])
+        .unstack()
+        .reset_index()
+        .rename(columns={0.25: "p25", 0.5: "median", 0.75: "p75"})
+    )
+
+# ✅ Safety fallback if pacing_segment is still empty or missing columns
+required_cols = {"days_since_onsale", "median", "p25", "p75"}
+if pacing_segment is None or any(col not in pacing_segment.columns for col in required_cols):
+    st.warning("Using default pacing fallback values.")
+    pacing_segment = pd.DataFrame({
+        "days_since_onsale": [120, 90, 60, 30, 7, 0],
+        "p25": [0.05, 0.15, 0.35, 0.6, 0.8, 0.95],
+        "median": [0.1, 0.25, 0.5, 0.75, 0.92, 1.0],
+        "p75": [0.15, 0.35, 0.6, 0.85, 0.97, 1.0],
+    })
+
 
 # ===========================
 # SCENARIO FORECAST MODEL
