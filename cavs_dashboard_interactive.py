@@ -1,139 +1,171 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import os
 
-# ===========================
-# PAGE CONFIG
-# ===========================
-st.set_page_config(page_title="Cavs Advanced Pacing Dashboard", layout="wide")
-st.title("🏀 Cleveland Cavaliers – Advanced Ticket Sales Pacing & Forecast Dashboard")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Cavs Interactive Ticket Sales Dashboard", layout="wide")
+st.title("🏀 Cavaliers Ticket Sales – Interactive Forecast Dashboard")
 st.markdown("""
-Real-time pacing and forecasting with scenario-based weighting by **Tier**, **Giveaway**, **Theme Night**, and **Day of Week**.  
-Compare your live performance to median cumulative pacing benchmarks and plan interventions.
+Use the interactive controls to test different sales scenarios and see how they affect pacing and total forecasted ticket sales.
 """)
 
-# ===========================
-# LOAD DATA
-# ===========================
+# --- LOAD DATA ---
 DATA_DIR = "cavs_hackathon_outputs"
 os.makedirs(DATA_DIR, exist_ok=True)
-pacing_path = os.path.join(DATA_DIR, "historical_pacing_line.csv")
-cavs_path = "Cavs_Tickets.csv"
 
 @st.cache_data
-def load_data(pacing_path, cavs_path):
-    pacing = pd.read_csv(pacing_path) if os.path.exists(pacing_path) else None
-    cavs = pd.read_csv(cavs_path) if os.path.exists(cavs_path) else None
-    return pacing, cavs
+def load_data():
+    model_metrics = pd.read_csv(f"{DATA_DIR}/model_metrics.csv")
+    top_features = pd.read_csv(f"{DATA_DIR}/top_features.csv")
+    forecast = pd.read_csv(f"{DATA_DIR}/forecast_summary.csv")
+    pacing = pd.read_csv(f"{DATA_DIR}/historical_pacing_line.csv")
+    return model_metrics, top_features, forecast, pacing
 
-pacing, cavs = load_data(pacing_path, cavs_path)
+model_metrics, top_features, forecast, pacing = load_data()
 
-# Default median pacing fallback (always available)
-if pacing is None:
-    pacing = pd.DataFrame({
-        "days_until_game": [120, 90, 60, 30, 7, 0],
-        "median_cum_share": [0.10, 0.25, 0.50, 0.75, 0.92, 1.00],
-        "p25": [0.05, 0.15, 0.35, 0.60, 0.80, 0.95],
-        "p75": [0.15, 0.35, 0.60, 0.85, 0.97, 1.00]
-    })
-
-# ===========================
-# SIDEBAR CONTROLS
-# ===========================
-st.sidebar.header("🎮 Scenario Controls")
-tier = st.sidebar.selectbox("Game Tier", ["A+", "A", "B", "C", "D"], index=2)
+# --- SIDEBAR SCENARIO CONTROLS ---
+st.sidebar.header("🎛️ Scenario Controls")
+sales_window = st.sidebar.slider("Sales Window (days open for sale)", 1, 150, 90, 1)
+avg_tix_txn = st.sidebar.slider("Average Tickets per Transaction", 1.0, 6.0, 3.0, 0.5)
+txns = st.sidebar.slider("Number of Transactions (txns)", 100, 800, 400, 10)
+tier = st.sidebar.selectbox("Tier (Game Attractiveness)", ["A+", "A", "B", "C", "D"], index=1)
 giveaway = st.sidebar.selectbox("Giveaway Type", ["None", "T-Shirt", "Bobblehead", "Poster", "Food Voucher"], index=1)
-theme = st.sidebar.selectbox("Theme Night", ["Regular Night", "Home Opener", "Pride", "Salute to Service", "Fan Appreciation"], index=0)
-day_of_week = st.sidebar.selectbox("Day of Week", ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], index=5)
-sales_window = st.sidebar.slider("Days Until Game", 0, 150, 60, 5)
-txns = st.sidebar.slider("Transactions", 100, 800, 400, 10)
-avg_tix_txn = st.sidebar.slider("Avg Tickets per Transaction", 1.0, 6.0, 3.0, 0.5)
-st.sidebar.caption("Adjust sliders and dropdowns to simulate ticket pacing scenarios.")
+st.sidebar.info("Adjust sliders and dropdowns to simulate real-time pacing and forecast performance.")
 
-# ===========================
-# WEIGHTS AND SCENARIO CALCULATION
-# ===========================
-tier_weight = {"A+": 1.30, "A": 1.20, "B": 1.00, "C": 0.85, "D": 0.70}
-giveaway_weight = {"None": 1.00, "T-Shirt": 1.08, "Bobblehead": 1.12, "Poster": 1.05, "Food Voucher": 1.10}
-theme_weight = {"Home Opener": 1.30, "Pride": 1.15, "Salute to Service": 1.10, "Fan Appreciation": 1.20, "Regular Night": 1.00}
-dow_weight = {"Sunday": 1.10, "Saturday": 1.08, "Friday": 1.05, "Thursday": 1.02,
-              "Wednesday": 0.95, "Tuesday": 0.90, "Monday": 0.92}
+# --- FORECAST CALCULATION ---
+base_sales = 1000
+tier_factor = {"A+": 1.3, "A": 1.2, "B": 1.0, "C": 0.85, "D": 0.7}
+giveaway_boost = {"None": 1.0, "T-Shirt": 1.08, "Bobblehead": 1.12, "Poster": 1.05, "Food Voucher": 1.1}
 
-tier_w = tier_weight.get(tier, 1.0)
-give_w = giveaway_weight.get(giveaway, 1.0)
-theme_w = theme_weight.get(theme, 1.0)
-dow_w = dow_weight.get(day_of_week, 1.0)
+forecast_value = (
+    base_sales +
+    (sales_window * 5.5) +
+    (avg_tix_txn * 80) +
+    (txns * 1.3)
+) * tier_factor[tier] * giveaway_boost[giveaway]
 
-# ===========================
-# FORECAST MODEL
-# ===========================
 goal = 2500
-pace_med = np.interp(sales_window, pacing["days_until_game"], pacing["median_cum_share"])
-forecast_value = txns * avg_tix_txn * (0.7 + pace_med * 0.6) * tier_w * give_w * theme_w * dow_w
 gap = goal - forecast_value
-progress_pct = np.clip((forecast_value / goal) * 100, 0, 150)
+gap_status = "above goal 🎉" if forecast_value >= goal else "below goal ⚠️"
 
-# ===========================
-# KPI METRICS
-# ===========================
+# --- KPI DISPLAY ---
 col1, col2, col3 = st.columns(3)
-col1.metric("🎯 Goal (Tickets)", goal)
-col2.metric("📈 Forecast", int(forecast_value))
+col1.metric("🎯 Goal (tickets)", goal)
+col2.metric("📈 Forecast (scenario)", int(forecast_value))
 col3.metric("⚠️ Gap to Goal", int(gap))
+st.caption(f"Your current scenario is **{gap_status}** by {abs(gap):,.0f} tickets.")
 
-# ===========================
-# SALES GAUGE
-# ===========================
-st.subheader("📟 Ticket Sales Gauge")
+# --- GAUGE CHART ---
 fig_gauge = go.Figure(go.Indicator(
     mode="gauge+number+delta",
     value=forecast_value,
     delta={"reference": goal, "increasing": {"color": "green"}, "decreasing": {"color": "red"}},
     gauge={
-        "axis": {"range": [0, goal * 1.4]},
-        "bar": {"color": "royalblue"},
+        "axis": {"range": [0, 3500]},
+        "bar": {"color": "blue"},
         "steps": [
-            {"range": [0, goal * 0.7], "color": "lightcoral"},
-            {"range": [goal * 0.7, goal], "color": "gold"},
-            {"range": [goal, goal * 1.4], "color": "lightgreen"},
+            {"range": [0, goal * 0.8], "color": "lightcoral"},
+            {"range": [goal * 0.8, goal], "color": "gold"},
+            {"range": [goal, 3500], "color": "lightgreen"}
         ],
-        "threshold": {"line": {"color": "black", "width": 4}, "value": forecast_value}
     },
-    title={"text": "Forecasted Ticket Sales vs Goal"}
+    title={"text": "Projected Ticket Sales vs Goal"}
 ))
 st.plotly_chart(fig_gauge, use_container_width=True)
 
-# ===========================
-# PACING STATUS
-# ===========================
-p25_val = np.interp(sales_window, pacing["days_until_game"], pacing["p25"])
-p75_val = np.interp(sales_window, pacing["days_until_game"], pacing["p75"])
-if pace_med < p25_val:
-    status, color = "🔴 Danger Zone (<P25)", "red"
-elif pace_med < p75_val:
-    status, color = "🟡 On Pace (P25–P75)", "gold"
-else:
-    status, color = "🟢 Strong (>P75)", "green"
-st.subheader(f"📊 Pacing Analysis – {status}")
+st.divider()
 
-# ===========================
-# PACING CHART
-# ===========================
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=pacing["days_until_game"], y=pacing["p25"], mode="lines", name="P25", line=dict(dash="dot", color="red")))
-fig.add_trace(go.Scatter(x=pacing["days_until_game"], y=pacing["median_cum_share"], mode="lines", name="Median", line=dict(color="blue", width=2)))
-fig.add_trace(go.Scatter(x=pacing["days_until_game"], y=pacing["p75"], mode="lines", name="P75", line=dict(dash="dot", color="green")))
-fig.add_vline(x=sales_window, line_dash="dash", line_color=color, annotation_text=f"{status}", annotation_position="top right")
-fig.add_trace(go.Scatter(x=[sales_window], y=[pace_med], mode="markers+text",
-                         text=[f"{pace_med:.0%}"], textposition="top center",
-                         marker=dict(size=14, color=color, symbol="star")))
-fig.update_layout(title=f"Cumulative Ticket Sales Pace ({tier}, {theme}, {day_of_week})",
-                  xaxis_title="Days Until Game", yaxis_title="Cumulative Share of Sales",
-                  template="plotly_white", height=500)
-st.plotly_chart(fig, use_container_width=True)
+# --- SCENARIO PACING CALCULATION ---
+momentum = (
+    (sales_window / 150) * 0.4 +
+    (avg_tix_txn / 6) * 0.2 +
+    (txns / 800) * 0.2 +
+    (tier_factor[tier] / 1.3) * 0.1 +
+    (giveaway_boost[giveaway] / 1.12) * 0.1
+)
+scenario_share = max(0.05, min(momentum, 1.0))
+
+# Find nearest pacing values to this sales window
+nearest_row = pacing.iloc[(pacing["days_until_game"] - sales_window).abs().argmin()]
+p25_val = nearest_row["p25"]
+p75_val = nearest_row["p75"]
+
+# --- Determine Indicator Color ---
+if scenario_share < p25_val:
+    indicator_color = "red"
+    perf_status = "🔴 Below P25 (Danger Zone)"
+elif scenario_share < p75_val:
+    indicator_color = "yellow"
+    perf_status = "🟡 On Pace (Median Range)"
+else:
+    indicator_color = "green"
+    perf_status = "🟢 Above P75 (Strong Performance)"
+
+st.subheader("📊 Historical Pacing Line – Scenario Comparison")
+st.caption(f"Current pacing classification: **{perf_status}**")
+
+# --- HISTORICAL PACING CHART ---
+fig_pace = px.line(
+    pacing,
+    x="days_until_game",
+    y=["median_cum_share", "p25", "p75"],
+    labels={"value": "Cumulative Sales Share", "days_until_game": "Days Until Game"},
+    title="Ticket Sales Pace vs. Scenario Momentum"
+)
+fig_pace.update_traces(mode="lines+markers")
+
+# Add scenario marker
+fig_pace.add_vline(
+    x=sales_window,
+    line_dash="dash",
+    line_color=indicator_color,
+    annotation_text=f"Scenario ({sales_window} days)",
+    annotation_position="top right"
+)
+fig_pace.add_trace(go.Scatter(
+    x=[sales_window],
+    y=[scenario_share],
+    mode="markers+text",
+    name="Your Scenario",
+    text=[f"{scenario_share*100:.0f}%"],
+    textposition="top center",
+    marker=dict(size=12, color=indicator_color, symbol="circle")
+))
+fig_pace.update_layout(
+    xaxis=dict(autorange="reversed"),
+    legend=dict(title="Percentile Lines", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+)
+st.plotly_chart(fig_pace, use_container_width=True)
+
+st.divider()
+
+# --- FEATURE IMPORTANCE ---
+st.subheader("🔥 Key Drivers of Ticket Sales")
+fig_imp = px.bar(
+    top_features.sort_values("importance", ascending=True),
+    x="importance",
+    y="metric",
+    orientation="h",
+    color="importance",
+    color_continuous_scale="Purples",
+    title="Top Predictive Features"
+)
+st.plotly_chart(fig_imp, use_container_width=True)
+
+# --- MODEL PERFORMANCE ---
+st.subheader("📉 Model Performance Metrics")
+st.dataframe(model_metrics, hide_index=True)
+mae_value = model_metrics.loc[model_metrics["Metric"].str.contains("MAE", case=False), "Value"].values[0]
+r2_value = model_metrics.loc[model_metrics["Metric"].str.contains("R", case=False), "Value"].values[0]
+st.markdown(f"""
+### 🧮 Model Performance Summary
+- **MAE (Mean Absolute Error)** ≈ **{mae_value:.0f} tickets** → Average forecast error per game.  
+- **R² (Coefficient of Determination)** = **{r2_value:.2f}** → Model explains about **{r2_value*100:.0f}%** of variation in sales.
+""")
+
+st.divider()
 
 # ===========================
 # ENHANCED INTERVENTION TIMELINE
@@ -175,14 +207,14 @@ st.plotly_chart(fig_timeline, use_container_width=True)
 
 st.caption("Each circle represents an intervention opportunity — earlier actions yield higher potential lift.")
 
-# ===========================
-# INSIGHTS
-# ===========================
+
+# --- INSIGHTS ---
 st.subheader("💡 Insights & Recommendations")
-st.markdown(f"""
-- **Current Status:** {status} → {progress_pct:.1f}% of goal ({forecast_value:.0f}/{goal} tickets)
-- **Scenario Weights:** Tier {tier} ({tier_w:.2f}×), Giveaway {giveaway} ({give_w:.2f}×), Theme {theme} ({theme_w:.2f}×)
-- **Forecast Model:** Adjusts automatically based on cumulative pacing and weighted scenario factors.
+st.markdown("""
+- Longer **sales windows** and higher **transaction counts** improve overall ticket sales.  
+- **Giveaways** and **Tier A games** drive stronger buyer interest and pacing.  
+- The **indicator color** (Red, Yellow, Green) shows your live pacing zone vs. historical benchmarks.  
+- Use this dashboard weekly to test new strategies and visualize how changes impact performance.
 """)
 
-st.caption("Cavs Hackathon Advanced Dashboard • Median cumulative pacing • Interactive forecasting • Consistent intervention design")
+st.info("🎯 The scenario indicator updates automatically with your inputs — Red = Danger Zone, Yellow = On Pace, Green = Strong Performance.")
