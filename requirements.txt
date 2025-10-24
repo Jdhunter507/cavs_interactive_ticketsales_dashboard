@@ -1,3 +1,12 @@
 streamlit>=1.36
 pandas>=2.1
 plotly>=5.20
+streamlit
+pandas
+numpy
+plotly
+scikit-learn
+
+python-dotenv
+matplotlib
+seaborn
