@@ -111,10 +111,31 @@ else:
     if day_select != "All":
         segment_df = segment_df[segment_df["day_of_week"] == day_select]
 
-    # If not enough data for chosen filters
-    if len(segment_df) < 50:
-        st.warning("Not enough data for this segmentation. Showing all games instead.")
-        segment_df = cavs
+# If not enough data for chosen filters
+if len(segment_df) < 50:
+    st.info(f"📊 Showing default pacing benchmarks because there isn't enough historical data for "
+            f"{tier_select} / {theme_select} / {giveaway_select}.")
+    segment_df = cavs.copy()
+
+
+# Compute pacing safely
+if "cum_share" not in segment_df.columns or segment_df.empty:
+    st.warning("Fallback pacing activated – insufficient data for selected filters.")
+    pacing_segment = pd.DataFrame({
+        "days_since_onsale": [120, 90, 60, 30, 7, 0],
+        "p25": [0.05, 0.15, 0.35, 0.6, 0.8, 0.95],
+        "median": [0.1, 0.25, 0.5, 0.75, 0.92, 1.0],
+        "p75": [0.15, 0.35, 0.6, 0.85, 0.97, 1.0],
+    })
+else:
+    pacing_segment = (
+        segment_df.groupby("days_since_onsale")["cum_share"]
+        .quantile([0.25, 0.5, 0.75])
+        .unstack()
+        .reset_index()
+        .rename(columns={0.25: "p25", 0.5: "median", 0.75: "p75"})
+    )
+
 
     # Compute pacing by quantiles
     pacing_segment = (
