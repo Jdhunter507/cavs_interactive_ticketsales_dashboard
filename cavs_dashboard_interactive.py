@@ -45,19 +45,32 @@ avg_tix_txn = st.sidebar.slider("Average Tickets per Transaction", 1.0, 6.0, 3.0
 txns = st.sidebar.slider("Number of Transactions (txns)", 100, 800, 400, 10)
 tier = st.sidebar.selectbox("Tier (Game Attractiveness)", ["A+", "A", "B", "C", "D"], index=1)
 giveaway = st.sidebar.selectbox("Giveaway Type", ["None", "T-Shirt", "Bobblehead", "Poster", "Food Voucher"], index=1)
+theme = st.sidebar.selectbox("Theme Night", ["Regular Night", "Home Opener", "Pride", "Salute to Service", "Fan Appreciation"], index=0)
+day_of_week = st.sidebar.selectbox("Day of Week", ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], index=0)
 st.sidebar.info("Adjust sliders and dropdowns to simulate real-time pacing and forecast performance.")
+
+# ===========================
+# WEIGHTS AND SCENARIO CALCULATION
+# ===========================
+tier_weight = {"A+": 1.30, "A": 1.20, "B": 1.00, "C": 0.85, "D": 0.70}
+giveaway_weight = {"None": 1.00, "T-Shirt": 1.08, "Bobblehead": 1.12, "Poster": 1.05, "Food Voucher": 1.10}
+theme_weight = {"Home Opener": 1.30, "Pride": 1.15, "Salute to Service": 1.10, "Fan Appreciation": 1.20, "Regular Night": 1.00}
+dow_weight = {"Sunday": 1.10, "Saturday": 1.08, "Friday": 1.05, "Thursday": 1.02,
+              "Wednesday": 0.95, "Tuesday": 0.90, "Monday": 0.92}
+
+tier_w = tier_weight.get(tier, 1.0)
+give_w = giveaway_weight.get(giveaway, 1.0)
+theme_w = theme_weight.get(theme, 1.0)
+dow_w = dow_weight.get(day_of_week, 1.0)
 
 # --- FORECAST CALCULATION ---
 base_sales = 1000
-tier_factor = {"A+": 1.3, "A": 1.2, "B": 1.0, "C": 0.85, "D": 0.7}
-giveaway_boost = {"None": 1.0, "T-Shirt": 1.08, "Bobblehead": 1.12, "Poster": 1.05, "Food Voucher": 1.1}
-
 forecast_value = (
     base_sales +
     (sales_window * 5.5) +
     (avg_tix_txn * 80) +
     (txns * 1.3)
-) * tier_factor[tier] * giveaway_boost[giveaway]
+) * tier_w * give_w * theme_w * dow_w
 
 goal = 2500
 gap = goal - forecast_value
@@ -95,8 +108,8 @@ momentum = (
     (sales_window / 150) * 0.4 +
     (avg_tix_txn / 6) * 0.2 +
     (txns / 800) * 0.2 +
-    (tier_factor[tier] / 1.3) * 0.1 +
-    (giveaway_boost[giveaway] / 1.12) * 0.1
+    (tier_w / 1.3) * 0.1 +
+    (give_w / 1.12) * 0.1
 )
 scenario_share = max(0.05, min(momentum, 1.0))
 
@@ -154,6 +167,38 @@ st.plotly_chart(fig_pace, use_container_width=True)
 
 st.divider()
 
+# --- ENHANCED INTERVENTION TIMELINE ---
+st.subheader("🕓 Strategic Intervention Timeline")
+
+if "Danger" in perf_status:
+    st.error("⚠️ Urgent: Implement interventions immediately to boost pace!")
+elif "On Pace" in perf_status:
+    st.warning("🟡 Moderate pace — plan mid-cycle interventions.")
+else:
+    st.success("🟢 Strong pace — maintain current strategy.")
+
+interventions = pd.DataFrame({
+    "Days Before Game": [90, 60, 30, 7],
+    "Intervention": ["Launch Early Marketing", "Add Giveaway Promotion", "Push Urgency Campaign", "Offer Limited-Time Discount"],
+    "Expected Effect (%)": [10, 8, 5, 3],
+    "Phase": ["Awareness", "Momentum", "Urgency", "Last Call"]
+})
+
+phase_colors = {phase: indicator_color for phase in interventions["Phase"]}
+
+fig_timeline = px.scatter(
+    interventions, x="Days Before Game", y="Expected Effect (%)",
+    text="Intervention", color="Phase",
+    color_discrete_map=phase_colors, size="Expected Effect (%)",
+)
+fig_timeline.update_traces(textposition="top center", marker=dict(line=dict(width=1, color="black")))
+fig_timeline.update_layout(title="📈 Recommended Interventions and Expected Lift",
+                           xaxis_title="Days Before Game", yaxis_title="Expected Pacing Lift (%)",
+                           xaxis=dict(autorange="reversed"), template="plotly_white", height=450)
+st.plotly_chart(fig_timeline, use_container_width=True)
+
+st.caption("Each circle represents an intervention opportunity — earlier actions yield higher potential lift.")
+
 # --- FEATURE IMPORTANCE ---
 if not top_features.empty:
     st.subheader("🔥 Key Drivers of Ticket Sales")
@@ -188,43 +233,11 @@ else:
 
 st.divider()
 
-# --- ENHANCED INTERVENTION TIMELINE ---
-st.subheader("🕓 Strategic Intervention Timeline")
-
-if "Danger" in perf_status:
-    st.error("⚠️ Urgent: Implement interventions immediately to boost pace!")
-elif "On Pace" in perf_status:
-    st.warning("🟡 Moderate pace — plan mid-cycle interventions.")
-else:
-    st.success("🟢 Strong pace — maintain current strategy.")
-
-interventions = pd.DataFrame({
-    "Days Before Game": [90, 60, 30, 7],
-    "Intervention": ["Launch Early Marketing", "Add Giveaway Promotion", "Push Urgency Campaign", "Offer Limited-Time Discount"],
-    "Expected Effect (%)": [10, 8, 5, 3],
-    "Phase": ["Awareness", "Momentum", "Urgency", "Last Call"]
-})
-
-phase_colors = {phase: indicator_color for phase in interventions["Phase"]}
-
-fig_timeline = px.scatter(
-    interventions, x="Days Before Game", y="Expected Effect (%)",
-    text="Intervention", color="Phase",
-    color_discrete_map=phase_colors, size="Expected Effect (%)",
-)
-fig_timeline.update_traces(textposition="top center", marker=dict(line=dict(width=1, color="black")))
-fig_timeline.update_layout(title="📈 Recommended Interventions and Expected Lift",
-                           xaxis_title="Days Before Game", yaxis_title="Expected Pacing Lift (%)",
-                           xaxis=dict(autorange="reversed"), template="plotly_white", height=450)
-st.plotly_chart(fig_timeline, use_container_width=True)
-
-st.caption("Each circle represents an intervention opportunity — earlier actions yield higher potential lift.")
-
 # --- INSIGHTS ---
 st.subheader("💡 Insights & Recommendations")
 st.markdown("""
-- Longer **sales windows** and higher **transaction counts** improve overall ticket sales.  
-- **Giveaways** and **Tier A games** drive stronger buyer interest and pacing.  
+- Longer **sales windows**, **giveaways**, **theme nights**, and higher **transaction counts** improve overall ticket sales.  
+- **Tier A and premium games** tend to outperform pacing targets by wide margins.  
 - The **indicator color** (Red, Yellow, Green) shows your live pacing zone vs. historical benchmarks.  
 - Use this dashboard weekly to test new strategies and visualize how changes impact performance.
 """)
