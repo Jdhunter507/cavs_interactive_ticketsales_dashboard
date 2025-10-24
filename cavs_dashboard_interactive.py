@@ -33,6 +33,7 @@ def minmax_scale_dict(values_dict, lo=0.75, hi=1.25):
     scaled = lo + (vals - vmin) * (hi - lo) / (vmax - vmin)
     return {k: float(s) for k, s in zip(keys, scaled)}
 
+
 def scenario_cum_share(day, txns, avg_tix, tier_w, give_w, dow_w):
     """Map scenario controls to plausible cumulative-share (0–1)."""
     norm_day  = np.clip(day / 240.0, 0, 1)
@@ -83,8 +84,12 @@ def load_data(path="Cavs Tickets.csv"):
     if "event_name" not in df.columns:
         df["event_name"] = "Event_" + df.index.astype(str)
 
+    # ✅ Fixed optional column handling
     for col, default in [("tier", "Unknown"), ("giveaway", "None"), ("day_of_sale", "Unknown")]:
-        df[col] = df.get(col, default).fillna(default)
+        if col not in df.columns:
+            df[col] = default
+        else:
+            df[col] = df[col].fillna(default)
 
     df = df.sort_values(["event_name", "days_since_onsale"])
     df["cum_tickets"] = df.groupby("event_name")["daily_tickets"].cumsum()
@@ -92,7 +97,6 @@ def load_data(path="Cavs Tickets.csv"):
     df["cum_share"] = np.where(df["total_tickets"] > 0, df["cum_tickets"] / df["total_tickets"], 0)
     df["cum_share"] = df["cum_share"].clip(0, 1)
 
-    # Event window
     evt_window = df.groupby("event_name")["days_since_onsale"].max().rename("event_sales_window")
     df = df.merge(evt_window, on="event_name", how="left")
 
@@ -173,10 +177,7 @@ window_group = st.sidebar.selectbox(
     index=0
 )
 
-sales_window = st.sidebar.slider(
-    "Days on Sale (before game)", 0, 240, 60, 10,
-    help="Days the tickets have been on sale"
-)
+sales_window = st.sidebar.slider("Days on Sale (before game)", 0, 240, 60, 10)
 txns = st.sidebar.slider("Number of Transactions (buyers)", 50, 1000, 400, 10)
 avg_tix_per_txn = st.sidebar.slider("Avg Tickets per Transaction", 1.0, 6.0, 3.0, 0.5)
 tier = st.sidebar.selectbox("Game Tier", sorted(tier_weight.keys()))
