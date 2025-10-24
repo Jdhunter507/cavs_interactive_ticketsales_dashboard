@@ -24,7 +24,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 @st.cache_data
 def load_data():
     pacing_path = os.path.join(DATA_DIR, "historical_pacing_line.csv")
-    cavs_path   = "Cavs Tickets (1).csv"
+    cavs_path   = "Cavs_Tickets.csv"
 
     # Load pacing safely
     pacing = pd.read_csv(pacing_path) if os.path.exists(pacing_path) else None
@@ -41,7 +41,7 @@ pacing, cavs = load_data()
 
 # Check Cavs data availability
 if cavs is None or cavs.empty:
-    st.error("⚠️ Could not find or load **Cavs Tickets (1).csv**.")
+    st.error("⚠️ Could not find or load **Cavs_Tickets.csv**.")
     st.info("""
     Make sure this file is in the same folder as your Streamlit app or uploaded to your Streamlit Cloud workspace.
     The dashboard will still run, but only the base pacing line will be shown.
