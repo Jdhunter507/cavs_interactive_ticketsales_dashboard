@@ -17,15 +17,28 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 @st.cache_data
 def load_data():
-    model_metrics = pd.read_csv(f"{DATA_DIR}/model_metrics.csv")
-    top_features = pd.read_csv(f"{DATA_DIR}/top_features.csv")
-    forecast = pd.read_csv(f"{DATA_DIR}/forecast_summary.csv")
-    pacing = pd.read_csv(f"{DATA_DIR}/historical_pacing_line.csv")
+    def safe_read(filename):
+        path = os.path.join(DATA_DIR, filename)
+        return pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+
+    model_metrics = safe_read("model_metrics.csv")
+    top_features = safe_read("top_features.csv")
+    forecast = safe_read("forecast_summary.csv")
+    pacing = safe_read("historical_pacing_line.csv")
+
+    # Default pacing fallback if missing
+    if pacing.empty:
+        pacing = pd.DataFrame({
+            "days_until_game": [120, 90, 60, 30, 7, 0],
+            "median_cum_share": [0.10, 0.25, 0.50, 0.75, 0.92, 1.00],
+            "p25": [0.05, 0.15, 0.35, 0.60, 0.80, 0.95],
+            "p75": [0.15, 0.35, 0.60, 0.85, 0.97, 1.00]
+        })
     return model_metrics, top_features, forecast, pacing
 
 model_metrics, top_features, forecast, pacing = load_data()
 
-# --- SIDEBAR SCENARIO CONTROLS ---
+# --- SIDEBAR CONTROLS ---
 st.sidebar.header("🎛️ Scenario Controls")
 sales_window = st.sidebar.slider("Sales Window (days open for sale)", 1, 150, 90, 1)
 avg_tix_txn = st.sidebar.slider("Average Tickets per Transaction", 1.0, 6.0, 3.0, 0.5)
@@ -95,13 +108,13 @@ p75_val = nearest_row["p75"]
 # --- Determine Indicator Color ---
 if scenario_share < p25_val:
     indicator_color = "red"
-    perf_status = "🔴 Below P25 (Danger Zone)"
+    perf_status = "🔴 Danger Zone (<P25)"
 elif scenario_share < p75_val:
-    indicator_color = "yellow"
+    indicator_color = "gold"
     perf_status = "🟡 On Pace (Median Range)"
 else:
     indicator_color = "green"
-    perf_status = "🟢 Above P75 (Strong Performance)"
+    perf_status = "🟢 Strong (>P75)"
 
 st.subheader("📊 Historical Pacing Line – Scenario Comparison")
 st.caption(f"Current pacing classification: **{perf_status}**")
@@ -142,44 +155,48 @@ st.plotly_chart(fig_pace, use_container_width=True)
 st.divider()
 
 # --- FEATURE IMPORTANCE ---
-st.subheader("🔥 Key Drivers of Ticket Sales")
-fig_imp = px.bar(
-    top_features.sort_values("importance", ascending=True),
-    x="importance",
-    y="metric",
-    orientation="h",
-    color="importance",
-    color_continuous_scale="Purples",
-    title="Top Predictive Features"
-)
-st.plotly_chart(fig_imp, use_container_width=True)
+if not top_features.empty:
+    st.subheader("🔥 Key Drivers of Ticket Sales")
+    fig_imp = px.bar(
+        top_features.sort_values("importance", ascending=True),
+        x="importance",
+        y="metric",
+        orientation="h",
+        color="importance",
+        color_continuous_scale="Purples",
+        title="Top Predictive Features"
+    )
+    st.plotly_chart(fig_imp, use_container_width=True)
+else:
+    st.info("No feature importance data available.")
 
 # --- MODEL PERFORMANCE ---
-st.subheader("📉 Model Performance Metrics")
-st.dataframe(model_metrics, hide_index=True)
-mae_value = model_metrics.loc[model_metrics["Metric"].str.contains("MAE", case=False), "Value"].values[0]
-r2_value = model_metrics.loc[model_metrics["Metric"].str.contains("R", case=False), "Value"].values[0]
-st.markdown(f"""
-### 🧮 Model Performance Summary
-- **MAE (Mean Absolute Error)** ≈ **{mae_value:.0f} tickets** → Average forecast error per game.  
-- **R² (Coefficient of Determination)** = **{r2_value:.2f}** → Model explains about **{r2_value*100:.0f}%** of variation in sales.
-""")
+if not model_metrics.empty:
+    st.subheader("📉 Model Performance Metrics")
+    st.dataframe(model_metrics, hide_index=True)
+
+    mae_value = model_metrics.loc[model_metrics["Metric"].str.contains("MAE", case=False), "Value"].values[0] if not model_metrics.empty else 0
+    r2_value = model_metrics.loc[model_metrics["Metric"].str.contains("R", case=False), "Value"].values[0] if not model_metrics.empty else 0
+
+    st.markdown(f"""
+    ### 🧮 Model Performance Summary
+    - **MAE (Mean Absolute Error)** ≈ **{mae_value:.0f} tickets**
+    - **R² (Coefficient of Determination)** = **{r2_value:.2f}**
+    """)
+else:
+    st.warning("No model performance data found.")
 
 st.divider()
 
-# ===========================
-# ENHANCED INTERVENTION TIMELINE
-# ===========================
+# --- ENHANCED INTERVENTION TIMELINE ---
 st.subheader("🕓 Strategic Intervention Timeline")
 
-if "Danger" in status:
+if "Danger" in perf_status:
     st.error("⚠️ Urgent: Implement interventions immediately to boost pace!")
-elif "On Pace" in status:
+elif "On Pace" in perf_status:
     st.warning("🟡 Moderate pace — plan mid-cycle interventions.")
 else:
     st.success("🟢 Strong pace — maintain current strategy.")
-
-st.markdown("Earlier interventions drive stronger long-term pacing improvements.")
 
 interventions = pd.DataFrame({
     "Days Before Game": [90, 60, 30, 7],
@@ -188,16 +205,12 @@ interventions = pd.DataFrame({
     "Phase": ["Awareness", "Momentum", "Urgency", "Last Call"]
 })
 
-phase_colors = {"Awareness": "red" if "Danger" in status else "gold" if "On Pace" in status else "green",
-                "Momentum": "red" if "Danger" in status else "gold" if "On Pace" in status else "green",
-                "Urgency": "red" if "Danger" in status else "gold" if "On Pace" in status else "green",
-                "Last Call": "red" if "Danger" in status else "gold" if "On Pace" in status else "green"}
+phase_colors = {phase: indicator_color for phase in interventions["Phase"]}
 
 fig_timeline = px.scatter(
     interventions, x="Days Before Game", y="Expected Effect (%)",
     text="Intervention", color="Phase",
     color_discrete_map=phase_colors, size="Expected Effect (%)",
-    hover_data={"Days Before Game": True, "Expected Effect (%)": True}
 )
 fig_timeline.update_traces(textposition="top center", marker=dict(line=dict(width=1, color="black")))
 fig_timeline.update_layout(title="📈 Recommended Interventions and Expected Lift",
@@ -206,7 +219,6 @@ fig_timeline.update_layout(title="📈 Recommended Interventions and Expected Li
 st.plotly_chart(fig_timeline, use_container_width=True)
 
 st.caption("Each circle represents an intervention opportunity — earlier actions yield higher potential lift.")
-
 
 # --- INSIGHTS ---
 st.subheader("💡 Insights & Recommendations")
