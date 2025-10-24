@@ -1,199 +1,196 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import os
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="Cavs Interactive Ticket Sales Dashboard", layout="wide")
-st.title("🏀 Cavaliers Ticket Sales – Enhanced Interactive Forecast Dashboard")
+# ===========================
+# PAGE CONFIG
+# ===========================
+st.set_page_config(page_title="Cavs Advanced Pacing Dashboard", layout="wide")
+st.title("🏀 Cleveland Cavaliers – Advanced Ticket Sales Pacing & Forecast Dashboard")
 st.markdown("""
-Use the interactive controls to simulate different ticket sales scenarios, filter by Theme Night, 
-and analyze how giveaways, tiers, and game themes influence pacing and total forecasted sales.
+Enhanced pacing analysis with segmentation by **Tier**, **Giveaway**, **Theme Night**, and **Day of Week**.  
+Track real-time performance vs benchmarks and visualize historical interventions.
 """)
 
-# --- LOAD DATA ---
+# ===========================
+# LOAD DATA
+# ===========================
 DATA_DIR = "cavs_hackathon_outputs"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 @st.cache_data
 def load_data():
-    model_metrics = pd.read_csv(f"{DATA_DIR}/model_metrics.csv")
-    top_features = pd.read_csv(f"{DATA_DIR}/top_features.csv")
-    forecast = pd.read_csv(f"{DATA_DIR}/forecast_summary.csv")
     pacing = pd.read_csv(f"{DATA_DIR}/historical_pacing_line.csv")
-    # Optional extended dataset
-    cavs_data_path = "Cavs Tickets (1).csv"
-    cavs_data = pd.read_csv(cavs_data_path) if os.path.exists(cavs_data_path) else None
-    return model_metrics, top_features, forecast, pacing, cavs_data
+    cavs = pd.read_csv("Cavs Tickets (1).csv") if os.path.exists("Cavs Tickets (1).csv") else None
+    return pacing, cavs
 
-model_metrics, top_features, forecast, pacing, cavs_data = load_data()
+pacing, cavs = load_data()
 
-# --- CLEAN & PREP DATA ---
-if cavs_data is not None:
-    cavs_data["theme"] = cavs_data["theme"].fillna("Regular Night")
-    cavs_data["giveaway"] = cavs_data["giveaway"].fillna("None")
-    cavs_data["day_of_week"] = cavs_data["day_of_week"].fillna("Unknown")
+# ===========================
+# DATA PREPARATION
+# ===========================
+if cavs is not None:
+    cavs["theme"] = cavs["theme"].fillna("Regular Night")
+    cavs["giveaway"] = cavs["giveaway"].fillna("None")
+    cavs["tier"] = cavs["tier"].fillna("B")
+    cavs["day_of_week"] = cavs["day_of_week"].fillna("Unknown")
 
-# --- SIDEBAR CONTROLS ---
-st.sidebar.header("🎛️ Scenario Controls")
+    # Compute cumulative shares per event
+    cavs = cavs.sort_values(["event_name", "days_since_onsale"])
+    cavs["cum_tickets"] = cavs.groupby("event_name")["daily_tickets"].cumsum()
+    cavs["total_tickets"] = cavs.groupby("event_name")["daily_tickets"].transform("sum")
+    cavs["cum_share"] = np.where(
+        cavs["total_tickets"] > 0,
+        cavs["cum_tickets"] / cavs["total_tickets"],
+        0
+    )
+    cavs["cum_share"] = cavs["cum_share"].clip(0, 1)
 
-sales_window = st.sidebar.slider("Sales Window (days open for sale)", 1, 150, 90, 1)
-avg_tix_txn = st.sidebar.slider("Average Tickets per Transaction", 1.0, 6.0, 3.0, 0.5)
-txns = st.sidebar.slider("Number of Transactions (buyers)", 100, 800, 400, 10)
-tier = st.sidebar.selectbox("Tier (Game Attractiveness)", ["A+", "A", "B", "C", "D"], index=1)
-giveaway = st.sidebar.selectbox("Giveaway Type", ["None", "T-Shirt", "Bobblehead", "Poster", "Food Voucher"], index=1)
-theme = st.sidebar.selectbox("Theme Night", 
-                             ["All", "Home Opener", "Pride", "Salute to Service", "Fan Appreciation", "Regular Night"],
-                             index=5)
-day_filter = st.sidebar.selectbox("Day of Week", 
-                                  ["All", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-                                  index=0)
+# ===========================
+# SIDEBAR FILTERS
+# ===========================
+st.sidebar.header("🎮 Scenario Controls")
 
-st.sidebar.info("Adjust sliders and dropdowns to test theme-based pacing and forecast performance.")
+tier_select = st.sidebar.selectbox("Game Tier", ["All", "A+", "A", "B", "C", "D"], index=2)
+giveaway_select = st.sidebar.selectbox("Giveaway", ["All", "None", "T-Shirt", "Bobblehead", "Poster", "Food Voucher"], index=0)
+theme_select = st.sidebar.selectbox("Theme Night", ["All", "Home Opener", "Pride", "Salute to Service", "Fan Appreciation", "Regular Night"], index=5)
+day_select = st.sidebar.selectbox("Day of Week", ["All", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], index=0)
 
-# --- WEIGHTS ---
-base_sales = 1000
-tier_factor = {"A+": 1.3, "A": 1.2, "B": 1.0, "C": 0.85, "D": 0.7}
-giveaway_boost = {"None": 1.0, "T-Shirt": 1.08, "Bobblehead": 1.12, "Poster": 1.05, "Food Voucher": 1.1}
-theme_boost = {"Home Opener": 1.3, "Pride": 1.15, "Salute to Service": 1.10, "Fan Appreciation": 1.20, "Regular Night": 1.0, "All": 1.0}
-day_boost = {"Sunday": 1.1, "Saturday": 1.08, "Friday": 1.05, "Thursday": 1.02, 
-             "Wednesday": 0.95, "Tuesday": 0.9, "Monday": 0.92, "All": 1.0}
+sales_window = st.sidebar.slider("Days Until Game", 0, 150, 60, 5)
+txns = st.sidebar.slider("Number of Transactions", 100, 800, 400, 10)
+avg_tix_txn = st.sidebar.slider("Avg Tickets / Transaction", 1.0, 6.0, 3.0, 0.5)
 
-# --- FORECAST CALCULATION ---
-forecast_value = (
-    base_sales +
-    (sales_window * 5.5) +
-    (avg_tix_txn * 80) +
-    (txns * 1.3)
-) * tier_factor[tier] * giveaway_boost[giveaway] * theme_boost[theme] * day_boost[day_filter]
+st.sidebar.caption("Use the filters to segment pacing and forecast behavior.")
+
+# ===========================
+# SEGMENTED PACING CALCULATION
+# ===========================
+segment_df = cavs.copy()
+if tier_select != "All":
+    segment_df = segment_df[segment_df["tier"] == tier_select]
+if giveaway_select != "All":
+    segment_df = segment_df[segment_df["giveaway"] == giveaway_select]
+if theme_select != "All":
+    segment_df = segment_df[segment_df["theme"] == theme_select]
+if day_select != "All":
+    segment_df = segment_df[segment_df["day_of_week"] == day_select]
+
+# If segment empty, fallback
+if len(segment_df) < 100:
+    st.warning("Not enough data for this segmentation. Showing all games instead.")
+    segment_df = cavs
+
+pacing_segment = (
+    segment_df.groupby("days_since_onsale")["cum_share"]
+    .quantile([0.25, 0.5, 0.75])
+    .unstack()
+    .reset_index()
+    .rename(columns={0.25: "p25", 0.5: "median", 0.75: "p75"})
+)
+
+# ===========================
+# SCENARIO FORECAST MODEL
+# ===========================
+tier_weight = {"A+": 1.3, "A": 1.2, "B": 1.0, "C": 0.85, "D": 0.7}
+giveaway_weight = {"None": 1.0, "T-Shirt": 1.08, "Bobblehead": 1.12, "Poster": 1.05, "Food Voucher": 1.1}
+theme_weight = {"Home Opener": 1.3, "Pride": 1.15, "Salute to Service": 1.10, "Fan Appreciation": 1.20, "Regular Night": 1.0, "All": 1.0}
+dow_weight = {"Sunday": 1.1, "Saturday": 1.08, "Friday": 1.05, "Thursday": 1.02, "Wednesday": 0.95, "Tuesday": 0.9, "Monday": 0.92, "All": 1.0}
+
+tier_w = tier_weight.get(tier_select, 1.0)
+give_w = giveaway_weight.get(giveaway_select, 1.0)
+theme_w = theme_weight.get(theme_select, 1.0)
+dow_w = dow_weight.get(day_select, 1.0)
+
+# Use current cumulative share at sales_window
+pace_med = np.interp(
+    sales_window,
+    pacing_segment["days_since_onsale"],
+    pacing_segment["median"],
+    left=0.05,
+    right=1.0
+)
 
 goal = 2500
+forecast_value = txns * avg_tix_txn * (0.7 + pace_med * 0.6) * tier_w * give_w * theme_w * dow_w
 gap = goal - forecast_value
-gap_status = "above goal 🎉" if forecast_value >= goal else "below goal ⚠️"
+progress_pct = np.clip((forecast_value / goal) * 100, 0, 150)
 
-# --- KPI DISPLAY ---
+# ===========================
+# KPI SECTION
+# ===========================
 col1, col2, col3 = st.columns(3)
-col1.metric("🎯 Goal (tickets)", goal)
-col2.metric("📈 Forecast (scenario)", int(forecast_value))
+col1.metric("🎯 Goal (Tickets)", goal)
+col2.metric("📈 Forecast", int(forecast_value))
 col3.metric("⚠️ Gap to Goal", int(gap))
-st.caption(f"Your scenario is **{gap_status}** by {abs(gap):,.0f} tickets.")
 
-# --- GAUGE CHART ---
-fig_gauge = go.Figure(go.Indicator(
-    mode="gauge+number+delta",
-    value=forecast_value,
-    delta={"reference": goal, "increasing": {"color": "green"}, "decreasing": {"color": "red"}},
-    gauge={
-        "axis": {"range": [0, 3500]},
-        "bar": {"color": "blue"},
-        "steps": [
-            {"range": [0, goal * 0.8], "color": "lightcoral"},
-            {"range": [goal * 0.8, goal], "color": "gold"},
-            {"range": [goal, 3500], "color": "lightgreen"}
-        ],
-    },
-    title={"text": "Projected Ticket Sales vs Goal"}
-))
-st.plotly_chart(fig_gauge, use_container_width=True)
-st.divider()
+# ===========================
+# PACING STATUS
+# ===========================
+p25_val = np.interp(sales_window, pacing_segment["days_since_onsale"], pacing_segment["p25"])
+p75_val = np.interp(sales_window, pacing_segment["days_since_onsale"], pacing_segment["p75"])
 
-# --- SCENARIO PACING CALCULATION ---
-momentum = (
-    (sales_window / 150) * 0.35 +
-    (avg_tix_txn / 6) * 0.20 +
-    (txns / 800) * 0.20 +
-    (tier_factor[tier] / 1.3) * 0.10 +
-    (giveaway_boost[giveaway] / 1.12) * 0.05 +
-    (theme_boost[theme] / 1.3) * 0.10
-)
-scenario_share = max(0.05, min(momentum, 1.0))
-
-# Find nearest pacing values to this sales window
-nearest_row = pacing.iloc[(pacing["days_until_game"] - sales_window).abs().argmin()]
-p25_val = nearest_row["p25"]
-p75_val = nearest_row["p75"]
-
-# --- Determine Indicator Color ---
-if scenario_share < p25_val:
-    indicator_color = "red"
-    perf_status = "🔴 Below P25 (Danger Zone)"
-elif scenario_share < p75_val:
-    indicator_color = "yellow"
-    perf_status = "🟡 On Pace (Median Range)"
+if pace_med < p25_val:
+    status, color = "🔴 Danger Zone (<P25)", "red"
+elif pace_med < p75_val:
+    status, color = "🟡 On Pace (P25–P75)", "gold"
 else:
-    indicator_color = "green"
-    perf_status = "🟢 Above P75 (Strong Performance)"
+    status, color = "🟢 Strong (>P75)", "green"
 
-st.subheader("📊 Historical Pacing Line – Scenario Comparison")
-st.caption(f"Current pacing classification: **{perf_status}**")
+st.subheader(f"📊 Pacing Analysis – {status}")
 
-# --- HISTORICAL PACING CHART ---
-fig_pace = px.line(
-    pacing,
-    x="days_until_game",
-    y=["median_cum_share", "p25", "p75"],
-    labels={"value": "Cumulative Sales Share", "days_until_game": "Days Until Game"},
-    title="Ticket Sales Pace vs. Scenario Momentum"
+# ===========================
+# PACING CHART
+# ===========================
+fig = go.Figure()
+
+fig.add_trace(go.Scatter(x=pacing_segment["days_since_onsale"], y=pacing_segment["p25"], mode="lines", name="P25", line=dict(dash="dot", color="red")))
+fig.add_trace(go.Scatter(x=pacing_segment["days_since_onsale"], y=pacing_segment["median"], mode="lines", name="Median", line=dict(color="blue", width=2)))
+fig.add_trace(go.Scatter(x=pacing_segment["days_since_onsale"], y=pacing_segment["p75"], mode="lines", name="P75", line=dict(dash="dot", color="green")))
+
+fig.add_vline(x=sales_window, line_dash="dash", line_color=color, annotation_text=f"{status}", annotation_position="top right")
+fig.add_trace(go.Scatter(x=[sales_window], y=[pace_med], mode="markers+text", text=[f"{pace_med:.0%}"], textposition="top center", marker=dict(size=14, color=color, symbol="star")))
+
+fig.update_layout(
+    title=f"Cumulative Ticket Sales Pace ({tier_select}, {theme_select}, {day_select})",
+    xaxis_title="Days Until Game",
+    yaxis_title="Cumulative Share of Sales",
+    template="plotly_white",
+    height=500
 )
-fig_pace.update_traces(mode="lines+markers")
 
-fig_pace.add_vline(
-    x=sales_window,
-    line_dash="dash",
-    line_color=indicator_color,
-    annotation_text=f"Scenario ({sales_window} days)",
-    annotation_position="top right"
-)
-fig_pace.add_trace(go.Scatter(
-    x=[sales_window],
-    y=[scenario_share],
-    mode="markers+text",
-    name="Your Scenario",
-    text=[f"{scenario_share*100:.0f}%"],
-    textposition="top center",
-    marker=dict(size=12, color=indicator_color, symbol="circle")
-))
-fig_pace.update_layout(
-    xaxis=dict(autorange="reversed"),
-    legend=dict(title="Percentile Lines", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-)
-st.plotly_chart(fig_pace, use_container_width=True)
-st.divider()
+st.plotly_chart(fig, use_container_width=True)
 
-# --- FEATURE IMPORTANCE ---
-st.subheader("🔥 Key Drivers of Ticket Sales")
-fig_imp = px.bar(
-    top_features.sort_values("importance", ascending=True),
-    x="importance",
-    y="metric",
-    orientation="h",
-    color="importance",
-    color_continuous_scale="Purples",
-    title="Top Predictive Features"
-)
-st.plotly_chart(fig_imp, use_container_width=True)
-
-# --- MODEL PERFORMANCE ---
-st.subheader("📉 Model Performance Metrics")
-st.dataframe(model_metrics, hide_index=True)
-mae_value = model_metrics.loc[model_metrics["Metric"].str.contains("MAE", case=False), "Value"].values[0]
-r2_value = model_metrics.loc[model_metrics["Metric"].str.contains("R", case=False), "Value"].values[0]
-st.markdown(f"""
-### 🧮 Model Performance Summary
-- **MAE (Mean Absolute Error)** ≈ **{mae_value:.0f} tickets** → Avg forecast error per game.  
-- **R² (Coefficient of Determination)** = **{r2_value:.2f}** → Model explains **{r2_value*100:.0f}%** of sales variance.
+# ===========================
+# INTERVENTION TIMELINE (EXAMPLE)
+# ===========================
+st.subheader("🕓 Example Intervention Timeline")
+st.markdown("""
+If a game falls into the **Danger Zone (<P25)**, teams should consider:
+- Triggering **marketing push** or **bundle offers**
+- Adding **Giveaway/Theme activation**
+- Using **dynamic pricing** to stimulate demand  
+Below are sample interventions and their effect windows:
 """)
 
-st.divider()
+interventions = pd.DataFrame({
+    "Days Before Game": [90, 60, 30, 7],
+    "Intervention": ["Launch early marketing", "Add Giveaway promotion", "Push urgency campaign", "Offer limited-time discount"],
+    "Expected Effect": ["+10% pace", "+8% pace", "+5% pace", "+3% pace"]
+})
+st.dataframe(interventions, hide_index=True)
 
-# --- INSIGHTS ---
+# ===========================
+# INSIGHTS
+# ===========================
 st.subheader("💡 Insights & Recommendations")
 st.markdown(f"""
-- **Theme Nights** like *Home Opener*, *Pride*, and *Fan Appreciation* drive measurable sales boosts.  
-- Longer **sales windows** and strong **giveaway promotions** raise cumulative sales pace.  
-- The **indicator color** reflects your live pacing status (Red = Danger, Yellow = On Pace, Green = Strong).  
-- Use filters to analyze how *theme*, *day of week*, and *tier* shape real pacing patterns.
+- **Segmented pacing** improves accuracy: separate curves for premium vs regular, theme vs non-theme, weekend vs weekday.
+- **Current Status:** {status} → {progress_pct:.1f}% toward goal ({forecast_value:.0f}/{goal} tickets)
+- **Forecast Model** now adjusts automatically based on cumulative progress at {sales_window} days before game.
+- **Next Step:** If pacing <P25 for ≥7 days, trigger intervention campaign.
 """)
 
-st.info("🎯 The dashboard now supports Theme Night and Day-of-Week forecasting adjustments.")
+st.caption("Cavs Hackathon Advanced Dashboard • Incorporates segmented cumulative analysis, forecasting, and intervention modeling.")
