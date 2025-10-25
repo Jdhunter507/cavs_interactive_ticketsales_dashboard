@@ -129,10 +129,8 @@ cavs_interactive_ticketsales_dashboard/
 ⚙️ How to Run the App
 ▶️ Option 1 – Open the Hosted App (No Installation Needed)
 Launch the interactive app instantly in your browser:
-🔗 Cavs Interactive Ticket Sales Dashboard (Live App)
+🔗 [Cavs Interactive Ticket Sales Dashboard (Live App)](https://cavsinteractiveticketsalesdashboard-5veot98qo5jvaxasahycha.streamlit.app/)
 
-(If you deploy under your own GitHub account, replace the URL with your Streamlit Cloud link — for example:
-https://<your-username>-cavs-interactive-ticketsales-dashboard.streamlit.app)
 
 💻 Option 2 – Run Locally
 bash
