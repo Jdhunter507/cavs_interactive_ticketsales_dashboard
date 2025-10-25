@@ -233,10 +233,10 @@ else:
 
 st.divider()
 
-# --- INSIGHTS & STRATEGIC RECOMMENDATIONS ---
+# --- INTERACTIVE INSIGHTS & STRATEGIC RECOMMENDATIONS ---
 st.subheader("💡 Insights & Strategic Recommendations")
 
-# Summary insights (retain your key scenario notes)
+# Intro summary (unchanged)
 st.markdown("""
 - Longer **sales windows**, **giveaways**, **theme nights**, and higher **transaction counts** improve overall ticket sales.  
 - **Tier A and premium games** tend to outperform pacing targets by wide margins.  
@@ -249,73 +249,94 @@ st.info("🎯 The scenario indicator updates automatically with your inputs — 
 st.divider()
 st.subheader("🎪 Strategic Recommendations from ML Analysis")
 
-# Historical context summary
-st.markdown("""
-### 📊 Historical Context  
-- Average **Tier C** game: **2,163 tickets**  
-- Average **Sunday** game: **2,234 tickets**  
-- Games with **promotions** average: **2,311 tickets**  
-- Historically, only **39.8%** of games reach the **2,500-ticket goal**
-""")
+# --- SLIDE NAVIGATION SETUP ---
+recommendations = [
+    {
+        "title": "📊 Historical Context",
+        "content": """
+        - Average **Tier C** game: **2,163 tickets**  
+        - Average **Sunday** game: **2,234 tickets**  
+        - Games with **promotions** average: **2,311 tickets**  
+        - Historically, only **39.8%** of games reach the **2,500-ticket goal**
+        """
+    },
+    {
+        "title": "1️⃣ Aggressive Promotional Package Required",
+        "content": """
+        Even with a full promotion package (**giveaway + theme + special jersey**), the model projects around **2,091 tickets**, still **409 short of goal**.  
+        Standard promotions alone will not close the gap — the team should deploy:
+        - A **popular bobblehead giveaway**
+        - A **'Family Fun Sunday'** theme with pregame activities  
+        - A **special jersey charity auction** to boost final-week interest
+        """
+    },
+    {
+        "title": "2️⃣ Dynamic Pricing & Bundle Strategy",
+        "content": """
+        Adopt a multi-tiered pricing plan to drive early momentum and fill gaps in slower periods:
+        - **Early Bird (45+ days):** 15% discount to accelerate early sales  
+        - **Family 4-Pack:** 4 tickets + $40 concessions credit  
+        - **Group Sales (10+):** 20% discount for youth leagues  
+        - **Flash Sales (7 days out):** 24-hour limited-time offer to stimulate urgency
+        """
+    },
+    {
+        "title": "3️⃣ Multi-Channel Marketing Blitz",
+        "content": """
+        Create a staged campaign timeline to maximize awareness and urgency:
+        - **60 days out:** Launch email campaign to 50k+ subscribers  
+        - **30 days out:** Social media contest (win courtside seats)  
+        - **14 days out:** Partner with local radio for giveaways  
+        - **7 days out:** Trigger final **flash sale activation**
+        """
+    },
+    {
+        "title": "4️⃣ Strategic Partnership Activation",
+        "content": """
+        Leverage weekend and Sunday games for high-value group sales:
+        - Target **youth basketball leagues** with group offers  
+        - Launch **corporate hospitality packages**  
+        - Partner with **local schools and alumni associations**  
+        - Collaborate with **community and church organizations** for group discounts
+        """
+    },
+    {
+        "title": "5️⃣ Real-Time Pacing Monitoring",
+        "content": """
+        Implement daily monitoring and automated triggers based on pacing performance:
+        - **30+ days:** Boost digital ads & email outreach  
+        - **14–30 days:** Ramp up social media and influencer promotions  
+        - **7–14 days:** Deploy group discounts and targeted flash sales  
+        - **Under 7 days:** Initiate last-minute pricing adjustments and urgency campaigns
+        """
+    },
+    {
+        "title": "🏁 Action Plan Summary",
+        "content": """
+        - Combine aggressive promotions with dynamic pricing and partnerships to surpass **2,500 tickets**.  
+        - Focus efforts **45–60 days before the game** to capture early buyers.  
+        - Use pacing data and this dashboard to adjust weekly.  
+        - **Success = Consistent tracking, smart bundling, and timely campaigns.**
+        """
+    }
+]
 
-# Recommendation 1
-st.markdown("""
-#### 1️⃣ Aggressive Promotional Package Required  
-Even with a full promotion package (**giveaway + theme + special jersey**), the model projects around **2,091 tickets**, still **409 short of goal**.  
-Standard promotions alone will not close the gap — the team should deploy:
-- A **popular bobblehead giveaway**
-- A **"Family Fun Sunday"** theme with pregame activities  
-- A **special jersey charity auction** to boost final-week interest
-""")
+# Keep track of which "slide" user is on
+if "slide_index" not in st.session_state:
+    st.session_state.slide_index = 0
 
-# Recommendation 2
-st.markdown("""
-#### 2️⃣ Dynamic Pricing & Bundle Strategy  
-Adopt a multi-tiered pricing plan to drive early momentum and fill gaps in slower periods:
-- **Early Bird (45+ days):** 15% discount to accelerate early sales  
-- **Family 4-Pack:** 4 tickets + $40 concessions credit  
-- **Group Sales (10+):** 20% discount for youth leagues  
-- **Flash Sales (7 days out):** 24-hour limited-time offer to stimulate urgency
-""")
+cols = st.columns([1, 3, 1])
+with cols[0]:
+    if st.button("⬅️ Previous", use_container_width=True, disabled=st.session_state.slide_index == 0):
+        st.session_state.slide_index -= 1
+with cols[2]:
+    if st.button("Next ➡️", use_container_width=True, disabled=st.session_state.slide_index == len(recommendations) - 1):
+        st.session_state.slide_index += 1
 
-# Recommendation 3
-st.markdown("""
-#### 3️⃣ Multi-Channel Marketing Blitz  
-Create a staged campaign timeline to maximize awareness and urgency:
-- **60 days out:** Launch email campaign to 50k+ subscribers  
-- **30 days out:** Social media contest (win courtside seats)  
-- **14 days out:** Partner with local radio for giveaways  
-- **7 days out:** Trigger final **flash sale activation**
-""")
+# Display the current slide content
+current = recommendations[st.session_state.slide_index]
+st.markdown(f"### {current['title']}")
+st.markdown(current["content"])
 
-# Recommendation 4
-st.markdown("""
-#### 4️⃣ Strategic Partnership Activation  
-Leverage weekend and Sunday games for high-value group sales:
-- Target **youth basketball leagues** with group offers  
-- Launch **corporate hospitality packages**  
-- Partner with **local schools and alumni associations**  
-- Collaborate with **community and church organizations** for group discounts
-""")
-
-# Recommendation 5
-st.markdown("""
-#### 5️⃣ Real-Time Pacing Monitoring  
-Implement daily monitoring and automated triggers based on pacing performance:
-- **30+ days:** Boost digital ads & email outreach  
-- **14–30 days:** Ramp up social media and influencer promotions  
-- **7–14 days:** Deploy group discounts and targeted flash sales  
-- **Under 7 days:** Initiate last-minute pricing adjustments and urgency campaigns
-""")
-
-st.divider()
-
-st.success("""
-🏁 **Action Plan Summary**
-- Combine aggressive promotions with dynamic pricing and partnerships to surpass 2,500 tickets.  
-- Focus efforts 45–60 days before the game to capture early buyers.  
-- Use pacing data and this dashboard to adjust weekly.  
-- Success = Consistent tracking, smart bundling, and timely campaigns.
-""")
-
-
+# Progress bar for visual cue
+st.progress((st.session_state.slide_index + 1) / len(recommendations))
