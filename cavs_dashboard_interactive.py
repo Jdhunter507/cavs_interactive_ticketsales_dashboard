@@ -327,7 +327,7 @@ st.markdown("""
 st.info("🎯 The scenario indicator updates automatically with your inputs — Red = Danger Zone, Yellow = On Pace, Green = Strong Performance.")
 
 st.divider()
-st.subheader("🎪 Strategic Recommendations from ML Analysis")
+st.subheader("🎟️ Strategic Recommendations from Analysis")
 
 # --- SLIDE NAVIGATION SETUP ---
 recommendations = [
