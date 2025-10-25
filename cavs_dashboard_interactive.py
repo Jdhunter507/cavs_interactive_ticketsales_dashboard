@@ -308,7 +308,10 @@ if slide["figure"] is not None:
     st.plotly_chart(slide["figure"], use_container_width=True)
 
 # Progress bar
-st.progress((st.session_state.insight_slide_index + 1) / len(slides))
+progress_val = (st.session_state.insight_slide_index + 1) / len(slides)
+progress_val = max(0.0, min(progress_val, 1.0))  # clamp within [0, 1]
+st.progress(progress_val)
+
 
 # --- INTERACTIVE INSIGHTS & STRATEGIC RECOMMENDATIONS ---
 st.subheader("💡 Insights & Strategic Recommendations")
