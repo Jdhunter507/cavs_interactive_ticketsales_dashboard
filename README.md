@@ -111,7 +111,7 @@ Every visualization (Gauge, Pacing Line, Timeline) updates dynamically to reflec
 
 ## 🧩 Folder Structure  
 
-
+---ymal
 cavs_interactive_ticketsales_dashboard/
 │
 ├── cavs_dashboard_interactive.py     # Main Streamlit app
