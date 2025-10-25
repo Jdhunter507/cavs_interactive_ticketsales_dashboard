@@ -124,14 +124,15 @@ cavs_interactive_ticketsales_dashboard/
 │   ├── forecast_summary.csv
 │
 └── README.md
-
+```
 
 ⚙️ How to Run the App
 ▶️ Option 1 – Open the Hosted App (No Installation Needed)
 Launch the interactive app instantly in your browser:
 🔗 Cavs Interactive Ticket Sales Dashboard (Live App)
 
-(If you deploy under your GitHub account, replace the URL with your own Streamlit Cloud link — for example: https://<your-username>-cavs-interactive-ticketsales-dashboard.streamlit.app)
+(If you deploy under your own GitHub account, replace the URL with your Streamlit Cloud link — for example:
+https://<your-username>-cavs-interactive-ticketsales-dashboard.streamlit.app)
 
 💻 Option 2 – Run Locally
 bash
@@ -147,6 +148,8 @@ pip install -r requirements.txt
 streamlit run cavs_dashboard_interactive.py
 Then open http://localhost:8501
 
+---
+
 🧠 Tech Stack
 Python 3.10+
 
@@ -155,6 +158,8 @@ Streamlit – interactive web UI
 Plotly – visualizations (Gauge, Timeline, Pacing)
 
 Pandas / NumPy – data manipulation and math
+
+---
 
 🏁 Summary
 The Cavs Interactive Ticket Sales Dashboard turns complex ticketing data into actionable insights for sales and marketing.
@@ -169,4 +174,4 @@ Identify intervention timing
 
 Visualize performance clearly
 
-A powerful data storytelling tool for modern sports business operations.
+A powerful data-storytelling tool for modern sports-business operations.
