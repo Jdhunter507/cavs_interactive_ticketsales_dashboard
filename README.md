@@ -110,34 +110,30 @@ Every visualization (Gauge, Pacing Line, Timeline) updates dynamically to reflec
 ---
 
 ## 🧩 Folder Structure  
+
+```yaml
 cavs_interactive_ticketsales_dashboard/
 │
-├── cavs_dashboard_interactive.py # Main Streamlit app
-├── Cavs_Tickets.csv # Optional dataset
+├── cavs_dashboard_interactive.py     # Main Streamlit app
+├── Cavs_Tickets.csv                  # Optional dataset
 │
 ├── cavs_hackathon_outputs/
-│ ├── historical_pacing_line.csv
-│ ├── top_features.csv
-│ ├── model_metrics.csv
-│ ├── forecast_summary.csv
+│   ├── historical_pacing_line.csv
+│   ├── top_features.csv
+│   ├── model_metrics.csv
+│   ├── forecast_summary.csv
 │
 └── README.md
 
 ---
-yaml
+⚙️ How to Run Locally
+▶️ Option 1 – Hosted (Streamlit Cloud)
+Visit your deployed version:
+🔗 Cavs Interactive Ticket Sales Dashboard
+
+💻 Option 2 – Run Locally
+bash
 Copy code
-
----
-
-## ⚙️ How to Run Locally  
-
-### ▶️ Option 1 – Hosted (Streamlit Cloud)  
-Visit your deployed version:  
-🔗 [Cavs Interactive Ticket Sales Dashboard](https://streamlit.io/cloud)
-
-### 💻 Option 2 – Run Locally  
-
-```bash
 # 1️⃣ Clone the repository
 git clone https://github.com/jdhunter507/cavs_interactive_ticketsales_dashboard.git
 cd cavs_interactive_ticketsales_dashboard
@@ -163,12 +159,12 @@ The Cavs Interactive Ticket Sales Dashboard turns complex ticketing data into ac
 
 It helps users:
 
-Monitor pacing in real-time
+Monitor pacing in real time
 
 Forecast outcomes under different conditions
 
 Identify intervention timing
 
-Visualize success clearly
+Visualize performance clearly
 
 A powerful data storytelling tool for modern sports business operations.
