@@ -233,13 +233,75 @@ else:
 
 st.divider()
 
-# --- INSIGHTS ---
+# --- INSIGHTS & STRATEGIC RECOMMENDATIONS ---
 st.subheader("💡 Insights & Recommendations")
 st.markdown("""
 - Longer **sales windows**, **giveaways**, **theme nights**, and higher **transaction counts** improve overall ticket sales.  
-- **Tier A and premium games** tend to outperform pacing targets by wide margins.  
 - The **indicator color** (Red, Yellow, Green) shows your live pacing zone vs. historical benchmarks.  
 - Use this dashboard weekly to test new strategies and visualize how changes impact performance.
 """)
 
 st.info("🎯 The scenario indicator updates automatically with your inputs — Red = Danger Zone, Yellow = On Pace, Green = Strong Performance.")
+
+st.divider()
+st.markdown("## 🎪 Strategic Recommendations from ML Analysis", unsafe_allow_html=True)
+
+# Add enhanced HTML recommendations
+recommendations_html = """
+<div class="recommendations">
+    <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h3 style="color: #FDBB30; font-size: 1.5em; margin-bottom: 10px;">📊 Historical Context</h3>
+        <p style="font-size: 1.1em;">
+            • Average Tier C game: <strong>2,163 tickets</strong><br>
+            • Sunday games average: <strong>2,234 tickets</strong><br>
+            • Games with promotions: <strong>2,311 tickets</strong><br>
+            • <strong>Only 39.8%</strong> of games reach 2,500 goal historically
+        </p>
+    </div>
+
+    <div class="rec-item">
+        <h3>1️⃣ AGGRESSIVE PROMOTIONAL PACKAGE REQUIRED</h3>
+        <p><strong>Critical Finding:</strong> Even with full promotion package (giveaway + theme + special jersey), forecast shows only 2,091 tickets — still 409 SHORT of goal.
+        Standard promotions alone will NOT be sufficient.
+        Recommend implementing enhanced promotional strategy including a popular bobblehead giveaway, "Family Fun Sunday" theme with pregame activities, and special jersey charity auction.</p>
+    </div>
+
+    <div class="rec-item">
+        <h3>2️⃣ DYNAMIC PRICING & BUNDLE STRATEGY</h3>
+        <p>Launch multi-tiered pricing approach:<br>
+        • <strong>Early Bird (45+ days):</strong> 15% discount to drive early sales<br>
+        • <strong>Family 4-Pack:</strong> 4 tickets + $40 concessions credit<br>
+        • <strong>Group Sales (10+):</strong> 20% discount targeting youth leagues<br>
+        • <strong>Flash Sales (7d out):</strong> 24-hour limited offers</p>
+    </div>
+
+    <div class="rec-item">
+        <h3>3️⃣ MULTI-CHANNEL MARKETING BLITZ</h3>
+        <p><strong>60 days out:</strong> Email campaign to 50k+ database<br>
+        <strong>30 days out:</strong> Social media contest (win courtside seats)<br>
+        <strong>14 days out:</strong> Radio partnership with local stations<br>
+        <strong>7 days out:</strong> Emergency flash sale activation</p>
+    </div>
+
+    <div class="rec-item">
+        <h3>4️⃣ STRATEGIC PARTNERSHIP ACTIVATION</h3>
+        <p>Leverage Sunday timing for family/group sales:<br>
+        • Youth basketball leagues (group packages)<br>
+        • Corporate hospitality packages<br>
+        • Cleveland-area school alumni associations<br>
+        • Community organizations and churches</p>
+    </div>
+
+    <div class="rec-item">
+        <h3>5️⃣ REAL-TIME PACING MONITORING</h3>
+        <p><strong>Daily tracking</strong> against exponential pacing line. Trigger interventions automatically:<br>
+        • <strong>30+ days:</strong> Boost digital marketing & email<br>
+        • <strong>14–30 days:</strong> Activate social media promotions<br>
+        • <strong>7–14 days:</strong> Deploy flash sales & group discounts<br>
+        • <strong>Under 7 days:</strong> Aggressive last-minute pricing</p>
+    </div>
+</div>
+"""
+
+st.markdown(recommendations_html, unsafe_allow_html=True)
+
