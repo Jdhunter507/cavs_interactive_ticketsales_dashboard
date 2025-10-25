@@ -318,5 +318,4 @@ st.success("""
 - Success = Consistent tracking, smart bundling, and timely campaigns.
 """)
 
-st.markdown(recommendations_html, unsafe_allow_html=True)
 
