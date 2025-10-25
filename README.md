@@ -111,7 +111,7 @@ Every visualization (Gauge, Pacing Line, Timeline) updates dynamically to reflec
 
 ## 🧩 Folder Structure  
 
-```yaml
+
 cavs_interactive_ticketsales_dashboard/
 │
 ├── cavs_dashboard_interactive.py     # Main Streamlit app
@@ -125,11 +125,13 @@ cavs_interactive_ticketsales_dashboard/
 │
 └── README.md
 
----
-⚙️ How to Run Locally
-▶️ Option 1 – Hosted (Streamlit Cloud)
-Visit your deployed version:
-🔗 Cavs Interactive Ticket Sales Dashboard
+
+⚙️ How to Run the App
+▶️ Option 1 – Open the Hosted App (No Installation Needed)
+Launch the interactive app instantly in your browser:
+🔗 Cavs Interactive Ticket Sales Dashboard (Live App)
+
+(If you deploy under your GitHub account, replace the URL with your own Streamlit Cloud link — for example: https://<your-username>-cavs-interactive-ticketsales-dashboard.streamlit.app)
 
 💻 Option 2 – Run Locally
 bash
