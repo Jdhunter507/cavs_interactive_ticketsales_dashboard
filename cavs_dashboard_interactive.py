@@ -418,5 +418,4 @@ current = recommendations[index]
 st.markdown(f"### {current['title']}")
 st.markdown(current["content"])
 
-# Progress bar for visual cue
-st.progress((st.session_state.slide_index + 1) / len(recommendations))
+
