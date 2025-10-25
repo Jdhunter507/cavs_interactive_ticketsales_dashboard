@@ -334,7 +334,10 @@ with cols[2]:
         st.session_state.slide_index += 1
 
 # Display the current slide content
-current = recommendations[st.session_state.slide_index]
+# Prevent out-of-range index
+index = max(0, min(st.session_state.slide_index, len(recommendations) - 1))
+current = recommendations[index]
+
 st.markdown(f"### {current['title']}")
 st.markdown(current["content"])
 
